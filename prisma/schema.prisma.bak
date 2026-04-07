@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  role           String   // "admin" or "teacher"
+  name           String
+  email          String   @unique
+  password       String
+  school         String?
+  subjects       String?  // JSON stringified array
+  paymentStatus  String   @default("active")
+  setupCompleted Boolean  @default(false)
+  lastAccess     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  classes        Class[]
+  students       Student[]
+  lessons        Lesson[]
+  topics         CurriculumTopic[]
+  grades         Grade[]
+  materials      Material[]
+}
+
+model Class {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id])
+  name      String
+  school    String
+  year      Int
+  level     String?  // "Fundamental" or "Ensino Médio"
+  createdAt DateTime @default(now())
+  students  Student[]
+  lessons   Lesson[]
+  topics    CurriculumTopic[]
+  grades    Grade[]
+  materials Material[]
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id])
+  name      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  grades    Grade[]
+}
+
+model Lesson {
+  id           String   @id @default(cuid())
+  teacherId    String
+  teacher      User     @relation(fields: [teacherId], references: [id])
+  classId      String
+  class        Class    @relation(fields: [classId], references: [id])
+  subject      String
+  date         DateTime
+  theme        String
+  objective    String?
+  content      String?
+  activities   String?
+  status       String   @default("planned")
+  observations String?
+  createdAt    DateTime @default(now())
+}
+
+model CurriculumTopic {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id])
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id])
+  subject   String
+  topic     String
+  status    String   @default("not-started")
+  createdAt DateTime @default(now())
+}
+
+model Grade {
+  id             String   @id @default(cuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId        String
+  class          Class    @relation(fields: [classId], references: [id])
+  teacherId      String
+  teacher        User     @relation(fields: [teacherId], references: [id])
+  subject        String
+  assessmentName String
+  value          Float
+  date           DateTime
+  createdAt      DateTime @default(now())
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id])
+  classId   String?
+  class     Class?   @relation(fields: [classId], references: [id])
+  subject   String
+  title     String
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,511 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  cnpj      String?
+  address   String?
+  phone     String?
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+
+  users     User[]
+  classes   Class[]
+  posts     Post[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  role           String   // "admin" or "teacher"
+  name           String
+  email          String   @unique
+  password       String
+  schoolId       String?
+  school         School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  subjects       String?  // JSON stringified array
+  paymentStatus  String   @default("active")
+  active        Boolean  @default(false)
+  blocked       Boolean  @default(false)
+  setupCompleted Boolean  @default(false)
+  lastAccess     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  
+  // Security
+  lastPasswordChange DateTime @default(now())
+  currentSessionId  String?
+  failedLoginAttempts Int @default(0)
+  lastFailedAttempt  DateTime?
+  
+  // 2FA
+  twoFactorSecret   String?
+  twoFactorEnabled  Boolean @default(false)
+
+  @@index([email])
+  @@index([role])
+  @@index([schoolId])
+  classes        Class[]
+  students       Student[]
+  lessons        Lesson[]
+  topics         CurriculumTopic[]
+  grades         Grade[]
+  materials      Material[]
+  activities     ActivityBank[]
+  auditLogs      AuditLog[]
+  sentMessages   Message[]   @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  notifications  Notification[]
+  posts          Post[]
+  questionBanks  QuestionBank[]
+  assessments    Assessment[]
+  accessKey      AccessKey[]
+  pushSubscriptions PushSubscription[]
+  twoFactorCodes TwoFactorCode[]
+  loginHistories LoginHistory[]
+}
+
+model Class {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  schoolId  String?
+  school    School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  name      String
+  year      Int
+  level     String?  // "Fundamental" or "Ensino Médio"
+  createdAt DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([year])
+  @@index([schoolId])
+  students  Student[]
+  lessons   Lesson[]
+  topics    CurriculumTopic[]
+  grades    Grade[]
+  materials Material[]
+  activities ActivityBank[]
+  posts     Post[]
+  assessments Assessment[]
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  name      String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+
+  @@index([classId])
+  @@index([teacherId])
+  grades    Grade[]
+  submissions Submission[]
+}
+
+model Lesson {
+  id           String   @id @default(cuid())
+  teacherId    String
+  teacher      User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId      String
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject      String
+  date         DateTime
+  theme        String
+  objective    String?
+  content      String?
+  activities   String?
+  status       String   @default("planned")
+  observations String?
+  createdAt    DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([classId])
+  @@index([date])
+}
+
+model CurriculumTopic {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   String
+  topic     String
+  status    String   @default("not-started")
+  createdAt DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subject])
+}
+
+model Grade {
+  id              String   @id @default(cuid())
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId         String
+  class           Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacherId       String
+  teacher         User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject         String
+  assessmentName  String
+  assessmentType  String   @default("nota") // "nota", "trabalho", "prova", "participacao"
+  weight          Float    @default(1.0)
+  value           Float
+  date            DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([studentId])
+  @@index([classId])
+  @@index([teacherId])
+  @@index([subject])
+  @@index([assessmentType])
+}
+
+model ActivityBank {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subject     String
+  title       String
+  description String?
+  activityType String  // "exercicio", "trabalho", "prova", "pesquisa", "outro"
+  difficulty  String   @default("medio") // "facil", "medio", "dificil"
+  content     String?
+  answer      String?
+  tags        String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subject])
+  @@index([activityType])
+}
+
+model Material {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subject     String
+  title       String
+  url         String
+  type        String
+  category    String?
+  tags        String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([subject])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  teacherId   String?
+  teacher     User?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  action      String   // "create", "update", "delete"
+  entity      String   // "student", "class", "grade", "lesson", etc.
+  entityId    String
+  description String?  // Human readable description
+  details     String?  // JSON with old/new values
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([teacherId])
+  @@index([entity])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ==================== NOVAS FUNCIONALIDADES ====================
+
+// Mural de Avisos
+model Post {
+  id          String   @id @default(cuid())
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  schoolId    String?
+  school      School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  isPinned    Boolean  @default(false)
+  isArchived  Boolean  @default(false)
+  viewCount   Int      @default(0)
+  attachments String?  // JSON array of attachment URLs
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([classId])
+  @@index([schoolId])
+  @@index([createdAt])
+}
+
+// Chat Interno
+model Message {
+  id          String   @id @default(cuid())
+  fromId      String
+  from        User     @relation("SentMessages", fields: [fromId], references: [id], onDelete: Cascade)
+  toId        String
+  to          User     @relation("ReceivedMessages", fields: [toId], references: [id], onDelete: Cascade)
+  content     String
+  type        String   @default("direct") // "direct", "group", "broadcast"
+  groupId     String?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([fromId])
+  @@index([toId])
+  @@index([groupId])
+  @@index([createdAt])
+}
+
+// Notificações
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info") // "info", "warning", "alert", "success"
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Banco de Questões
+model QuestionBank {
+  id          String   @id @default(cuid())
+  teacherId   String
+  teacher     User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  name        String
+  subject     String
+  description String?
+  tags        String?  // JSON array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([subject])
+  questions   Question[]
+}
+
+// Questões
+model Question {
+  id             String         @id @default(cuid())
+  bankId         String?
+  bank           QuestionBank?  @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  assessmentId   String?
+  assessment     Assessment?    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  type           String         // "multiple_choice", "true_false", "essay", "matching"
+  content        String         // The question text/content
+  options        String?        // JSON array for multiple choice
+  correctAnswer  String         // JSON - answer(s)
+  points         Float          @default(1)
+  explanation    String?        // Explanation for the correct answer
+  order          Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([bankId])
+  @@index([assessmentId])
+}
+
+// Provas/Avaliações Online
+model Assessment {
+  id            String      @id @default(cuid())
+  teacherId     String
+  teacher       User        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId       String?
+  class         Class?      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  subject       String
+  type          String      // "test", "quiz", "assignment", "exam"
+  duration      Int?        // minutes
+  shuffleQuestions Boolean   @default(false)
+  shuffleOptions   Boolean   @default(false)
+  showResults   Boolean      @default(true)
+  passingScore  Float        @default(5.0)
+  status        String      @default("draft") // "draft", "published", "closed"
+  scheduledAt   DateTime?
+  publishedAt   DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([teacherId])
+  @@index([classId])
+  @@index([subject])
+  @@index([status])
+  questions     Question[]
+  submissions   Submission[]
+}
+
+// Entregas de Provas
+model Submission {
+  id            String     @id @default(cuid())
+  assessmentId  String
+  assessment    Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers       String     // JSON object with answers
+  score         Float?
+  maxScore      Float?
+  isGraded      Boolean    @default(false)
+  submittedAt   DateTime   @default(now())
+  gradedAt      DateTime?
+  feedback      String?
+
+  @@index([assessmentId])
+  @@index([studentId])
+}
+
+// Analytics Cache
+model AnalyticsCache {
+  id        String   @id @default(cuid())
+  teacherId String
+  type      String   // "class_stats", "student_stats", "subject_stats"
+  data      String   // JSON cached data
+  expiresAt DateTime
+
+  @@index([teacherId])
+  @@index([type])
+  @@index([expiresAt])
+}
+
+// Keys de Acesso
+model AccessKey {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  teacherId   String?  @unique
+  teacher     User?    @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  emailTarget String?  // Email do professor alvo
+  planType    String   // "monthly" | "yearly" | "free"
+  status      String   @default("active")
+  price       Float    // 19.99 ou 179.88
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  usedAt      DateTime?
+
+  @@index([key])
+  @@index([teacherId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// Recuperação de Senha
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
+// Notificações Push/Web Push
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// 2FA
+model TwoFactorCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([code])
+}
+
+// Rate Limiting
+model RateLimitEntry {
+  id        String   @id @default(cuid())
+  identifier String   @unique
+  ipAddress  String?
+  count      Int      @default(0)
+  resetTime  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([resetTime])
+}
+
+// Login History
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Security Alerts
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  userId      String?  // null = admin alert
+  type        String   // "failed_login", "suspicious_ip", "password_changed", "2fa_disabled"
+  title       String
+  message     String
+  severity    String   @default("low") // "low", "medium", "high"
+  metadata    String?  // JSON with extra info
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// IP Blacklist
+model IpBlacklist {
+  id          String   @id @default(cuid())
+  ipAddress   String   @unique
+  reason      String?
+  expiresAt   DateTime? // null = permanent
+  createdAt   DateTime @default(now())
+
+  @@index([ipAddress])
+}
