@@ -3,16 +3,16 @@
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/actions/auth';
 
-const GROK_API_KEY = process.env.GROK_API_KEY;
-const AI_PROVIDER = process.env.AI_PROVIDER || 'grok';
-const AI_MODEL = process.env.AI_MODEL || 'grok-2';
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const AI_PROVIDER = process.env.AI_PROVIDER || 'groq';
+const AI_MODEL = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
 
-async function callGrok(systemPrompt: string, userMessage: string) {
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+async function callGroq(systemPrompt: string, userMessage: string) {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROK_API_KEY}`
+      'Authorization': `Bearer ${GROQ_API_KEY}`
     },
     body: JSON.stringify({
       model: AI_MODEL,
@@ -25,7 +25,8 @@ async function callGrok(systemPrompt: string, userMessage: string) {
   });
   
   if (!response.ok) {
-    throw new Error(`Grok API error: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${response.status} - ${errorText}`);
   }
   
   const data = await response.json();
@@ -38,9 +39,9 @@ export async function askAIAboutCurrentReport(message: string, reportData: any, 
     return { response: 'Unauthorized', type: 'error' };
   }
   
-  if (!GROK_API_KEY) {
+  if (!GROQ_API_KEY) {
     return { 
-      response: "API de IA não configurada. Configure GROK_API_KEY no arquivo .env",
+      response: "API de IA não configurada. Configure GROQ_API_KEY no arquivo .env",
       type: 'error'
     };
   }
@@ -64,7 +65,7 @@ Seja específico citando os dados do relatório.
 Use formatação clara com markdown.
 Responda sempre em português brasileiro.`;
 
-    const response = await callGrok(systemPrompt, message);
+    const response = await callGroq(systemPrompt, message);
     
     return { response, type: 'success' };
   } catch (error: any) {

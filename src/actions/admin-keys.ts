@@ -22,17 +22,45 @@ export async function createAccessKey(formData: FormData) {
     yearly: { price: 179.88, days: 365, label: 'Anual' }
   }
 
-  const plan = plans[planType] || plans.monthly
-  
   const key = generateKey()
   const expiresAt = new Date()
-  expiresAt.setHours(expiresAt.getHours() + (plan.days * 24))
+  let price = 0
+
+  if (planType === 'custom') {
+    const customDuration = parseInt(formData.get('customDuration') as string)
+    const customUnit = formData.get('customDurationUnit') as string
+    const customPrice = parseFloat(formData.get('customPrice') as string) || 0
+
+    if (!customDuration || customDuration < 1) {
+      return { error: 'Duração inválida' }
+    }
+
+    switch (customUnit) {
+      case 'minutes':
+        expiresAt.setMinutes(expiresAt.getMinutes() + customDuration)
+        break
+      case 'hours':
+        expiresAt.setHours(expiresAt.getHours() + customDuration)
+        break
+      case 'days':
+        expiresAt.setDate(expiresAt.getDate() + customDuration)
+        break
+      default:
+        expiresAt.setMinutes(expiresAt.getMinutes() + customDuration)
+    }
+
+    price = customPrice
+  } else {
+    const plan = plans[planType] || plans.monthly
+    price = plan.price
+    expiresAt.setHours(expiresAt.getHours() + (plan.days * 24))
+  }
 
   await prisma.accessKey.create({
     data: {
       key,
       planType,
-      price: plan.price,
+      price,
       status: 'active',
       expiresAt,
       emailTarget

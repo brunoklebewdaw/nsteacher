@@ -33,6 +33,9 @@ export default function AdminKeysPageInner() {
   const [selectedTeacher, setSelectedTeacher] = useState('')
   const [emailTarget, setEmailTarget] = useState('')
   const [planType, setPlanType] = useState('monthly')
+  const [customDuration, setCustomDuration] = useState('')
+  const [customDurationUnit, setCustomDurationUnit] = useState('minutes')
+  const [customPrice, setCustomPrice] = useState('')
   const [creating, setCreating] = useState(false)
   const [assigning, setAssigning] = useState(false)
   const [newKey, setNewKey] = useState<string | null>(null)
@@ -70,10 +73,17 @@ export default function AdminKeysPageInner() {
       const formData = new FormData()
       formData.append('planType', planType)
       formData.append('emailTarget', emailTarget)
+      if (planType === 'custom') {
+        formData.append('customDuration', customDuration)
+        formData.append('customDurationUnit', customDurationUnit)
+        formData.append('customPrice', customPrice || '0')
+      }
       const result = await createAccessKey(formData)
       if (result?.success) {
         setNewKey(result.key)
         setEmailTarget('')
+        setCustomDuration('')
+        setCustomPrice('')
         loadKeys()
       }
     } catch (err) {
@@ -334,8 +344,55 @@ export default function AdminKeysPageInner() {
                     <option value="test">Teste (4 horas)</option>
                     <option value="monthly">Mensal - R$ 19,99</option>
                     <option value="yearly">Anual - R$ 179,88</option>
+                    <option value="custom">Personalizado</option>
                   </select>
                 </div>
+                {planType === 'custom' && (
+                  <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Duração</label>
+                        <input
+                          type="number"
+                          value={customDuration}
+                          onChange={(e) => setCustomDuration(e.target.value)}
+                          placeholder="5"
+                          min="1"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Unidade</label>
+                        <select
+                          value={customDurationUnit}
+                          onChange={(e) => setCustomDurationUnit(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <option value="minutes">Minutos</option>
+                          <option value="hours">Horas</option>
+                          <option value="days">Dias</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Preço (R$)</label>
+                      <input
+                        type="number"
+                        value={customPrice}
+                        onChange={(e) => setCustomPrice(e.target.value)}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    {customDuration && (
+                      <p className="text-xs text-gray-500">
+                        Expira em: {customDuration} {customDurationUnit === 'minutes' ? 'minuto(s)' : customDurationUnit === 'hours' ? 'hora(s)' : 'dia(s)'}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email do Professor (opcional)</label>
                   <select

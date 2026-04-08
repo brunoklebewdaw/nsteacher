@@ -1,0 +1,24 @@
+app = "nsteacher"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[services]]
+  http_checks = []
+  internal_port = 5001
+  processes = ["app"]
+  protocol = "tcp"
+  timeout = 5
+
+[[services.ports]]
+  force_https = true
+  handlers = ["http"]
+  port = 80
+
+[[services.ports]]
+  handlers = ["tls", "http"]
+  port = 443

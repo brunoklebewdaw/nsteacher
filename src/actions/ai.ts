@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const GROK_API_KEY = process.env.GROK_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const AI_PROVIDER = process.env.AI_PROVIDER || 'openai';
 const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 
@@ -23,9 +23,9 @@ async function requireTeacher() {
 export async function askAIAboutReports(message: string) {
   const user = await requireTeacher();
   
-  if (!OPENAI_API_KEY && !ANTHROPIC_API_KEY && !GROK_API_KEY) {
+  if (!OPENAI_API_KEY && !ANTHROPIC_API_KEY && !GROQ_API_KEY) {
     return { 
-      response: "API de IA não configurada. Configure OPENAI_API_KEY, ANTHROPIC_API_KEY ou GROK_API_KEY no arquivo .env",
+      response: "API de IA não configurada. Configure OPENAI_API_KEY, ANTHROPIC_API_KEY ou GROQ_API_KEY no arquivo .env",
       type: 'error'
     };
   }
@@ -51,8 +51,8 @@ Use formatação clara com markdown.`;
     
     if (AI_PROVIDER === 'anthropic' && ANTHROPIC_API_KEY) {
       response = await callAnthropic(systemPrompt, message);
-    } else if (AI_PROVIDER === 'grok' && GROK_API_KEY) {
-      response = await callGrok(systemPrompt, message);
+    } else if (AI_PROVIDER === 'groq' && GROQ_API_KEY) {
+      response = await callGroq(systemPrompt, message);
     } else {
       response = await callOpenAI(systemPrompt, message);
     }
@@ -112,12 +112,12 @@ async function callAnthropic(systemPrompt: string, userMessage: string) {
   return data.content[0].text;
 }
 
-async function callGrok(systemPrompt: string, userMessage: string) {
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+async function callGroq(systemPrompt: string, userMessage: string) {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROK_API_KEY}`
+      'Authorization': `Bearer ${GROQ_API_KEY}`
     },
     body: JSON.stringify({
       model: AI_MODEL,
@@ -130,7 +130,8 @@ async function callGrok(systemPrompt: string, userMessage: string) {
   });
   
   if (!response.ok) {
-    throw new Error(`Grok API error: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Groq API error: ${response.status} - ${errorText}`);
   }
   
   const data = await response.json();
@@ -193,9 +194,9 @@ async function getTeacherDataForAI(teacherId: string) {
 // ==================== AI LESSON PLANNER ====================
 
 export async function generateLessonPlan(theme: string, subject: string, classLevel?: string) {
-  if (!OPENAI_API_KEY && !ANTHROPIC_API_KEY && !GROK_API_KEY) {
+  if (!OPENAI_API_KEY && !ANTHROPIC_API_KEY && !GROQ_API_KEY) {
     return { 
-      response: "API de IA não configurada. Configure OPENAI_API_KEY, ANTHROPIC_API_KEY ou GROK_API_KEY no arquivo .env",
+      response: "API de IA não configurada. Configure OPENAI_API_KEY, ANTHROPIC_API_KEY ou GROQ_API_KEY no arquivo .env",
       type: 'error'
     };
   }
@@ -225,8 +226,8 @@ Gere um plano de aula detalhado e prático.`;
     
     if (AI_PROVIDER === 'anthropic' && ANTHROPIC_API_KEY) {
       response = await callAnthropic(systemPrompt, userMessage);
-    } else if (AI_PROVIDER === 'grok' && GROK_API_KEY) {
-      response = await callGrok(systemPrompt, userMessage);
+    } else if (AI_PROVIDER === 'groq' && GROQ_API_KEY) {
+      response = await callGroq(systemPrompt, userMessage);
     } else {
       response = await callOpenAI(systemPrompt, userMessage);
     }

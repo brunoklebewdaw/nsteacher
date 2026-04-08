@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "NSteacher - Gestão Pedagógica",
   description: "Organização pedagógica simplificada para professores",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon-192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
