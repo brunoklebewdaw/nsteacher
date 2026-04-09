@@ -9,6 +9,10 @@ RUN npm ci --legacy-peer-deps
 
 COPY . .
 
+RUN mkdir -p prisma && echo "" > prisma/prod.db
+
+ENV DATABASE_URL="file:./prisma/prod.db"
+
 RUN npx prisma generate
 
 RUN npm run build
